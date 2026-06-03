@@ -1,0 +1,13 @@
+{
+  "name": "tortugas-bot",
+  "version": "1.0.0",
+  "description": "Tortugas Guild Bot — MVP timers, instances, market",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  }
+}
