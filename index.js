@@ -44,9 +44,6 @@ const MVP_LEGEND = [
   '`!current` — list all active timers',
   '`!remove <name>` — delete a timer',
   '`!edit <name>` — reset kill time to now',
-  '`!launch` — show launch event countdown',
-  '`!server` — show server status & player count',
-  '`!players` — show current player & merchant count',
 ].join('\n');
 
 // ─── Build boss lookup ─────────────────────────────────────────────────────
@@ -190,38 +187,6 @@ async function handleMvpMessage(message) {
     const { minSpawn, maxSpawn } = registerBossKill(boss, killTime, killerId, message.channel);
     const embed = buildTimerEmbed(boss, killTime, minSpawn, maxSpawn);
     return message.reply({ content: `✅ Timer for **${boss.bossName}** reset to now. :tortugas:`, embeds: [embed] });
-  }
-
-  if (content.toLowerCase() === '!launch') {
-    return message.reply(
-      `🚀 **Revenant Elegy Launch** :tortugas:\n📅 <t:${LAUNCH_TIMESTAMP}:F>\n⏳ <t:${LAUNCH_TIMESTAMP}:R>`
-    );
-  }
-
-  if (content.toLowerCase() === '!server') {
-    try {
-      const health = await fetchServerHealth();
-      return message.reply(
-        `**🖥️ Server Status** :tortugas:\n` +
-        `Login: ${statusIcon(health.login)} | Char: ${statusIcon(health.char)} | Map: ${statusIcon(health.map)}\n` +
-        `👥 Players online: **${health.count}** (${health.unique} unique, ${health.multiclients} multiclient)\n` +
-        `🛒 Autotraders/merchants: **${health.autotraders}**`
-      );
-    } catch (e) {
-      return message.reply('❌ Could not reach the server health API.');
-    }
-  }
-
-  if (content.toLowerCase() === '!players') {
-    try {
-      const health = await fetchServerHealth();
-      return message.reply(
-        `👥 **Players online:** ${health.count} (${health.unique} unique, ${health.multiclients} multiclient)\n` +
-        `🛒 **Autotraders/merchants:** ${health.autotraders} :tortugas:`
-      );
-    } catch (e) {
-      return message.reply('❌ Could not reach the server health API.');
-    }
   }
 
   // Disambiguation reply
