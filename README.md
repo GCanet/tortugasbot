@@ -15,9 +15,6 @@ Track boss kills and get automatic spawn reminders.
 | `!current` | List all active timers sorted by next spawn |
 | `!remove <name>` | Delete a timer |
 | `!edit <name>` | Reset a timer's kill time to now |
-| `!launch` | Show the server launch event countdown |
-| `!server` | Show live server status and player count |
-| `!players` | Show player and merchant count |
 
 - Fuzzy boss name matching with alias support
 - Disambiguation menu when multiple bosses match
