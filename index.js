@@ -72,7 +72,7 @@ function buildTimerEmbed(boss, killTime, minSpawn, maxSpawn) {
   const maxTs  = Math.floor(maxSpawn / 1000);
 
   return new EmbedBuilder()
-    .setTitle(`☠️ ${boss.bossName} :tortugas:`)
+    .setTitle(`☠️ ${boss.bossName} <:tortugas:1511020006350127114>`)
     .setColor(0xe74c3c)
     .setThumbnail(`https://static.divine-pride.net/images/mobs/png/${boss.ID}.png`)
     .addFields(
@@ -84,7 +84,7 @@ function buildTimerEmbed(boss, killTime, minSpawn, maxSpawn) {
       { name: '\u200B',        value: '\u200B',                                           inline: true  },
       { name: '📋 Commands',   value: MVP_LEGEND,                                         inline: false }
     )
-    .setFooter({ text: `${boss.race} • ${boss.property} • HP: ${formatHp(boss.HP)} | 🐢 TORTUGAS` })
+    .setFooter({ text: `${boss.race} • ${boss.property} • HP: ${formatHp(boss.HP)} | <:tortugas:1511020006350127114> Shell so hard, bosses can't ignore us` })
     .setTimestamp();
 }
 
@@ -94,7 +94,7 @@ function buildCurrentListEmbed(timers) {
     .addFields({ name: '📋 Commands', value: MVP_LEGEND, inline: false });
 
   if (timers.length === 0) {
-    return base.setTitle('📋 Current MVP Timers :tortugas:').setDescription('No active timers. Go hunt something, TORTUGAS! 🐢');
+    return base.setTitle('📋 Current MVP Timers <:tortugas:1511020006350127114>').setDescription('No active timers. What are you waiting for, TORTUGAS? Get out there and hunt! <:tortugas:1511020006350127114>');
   }
 
   const now = Date.now();
@@ -107,7 +107,7 @@ function buildCurrentListEmbed(timers) {
   });
 
   return base
-    .setTitle(`📋 Current MVP Timers :tortugas: (${timers.length})`)
+    .setTitle(`📋 Current MVP Timers <:tortugas:1511020006350127114> (${timers.length})`)
     .setDescription(lines.join('\n\n'));
 }
 
@@ -123,7 +123,7 @@ function scheduleSpawnReminder(boss, minSpawn, killerId, channel) {
         .setStyle(ButtonStyle.Danger);
       const row = new ActionRowBuilder().addComponents(button);
       await channel.send({
-        content: `<@${killerId}> ⏰ **${boss.bossName}** is spawning in ~10 minutes! :tortugas:\nMap: \`${boss.location || 'Unknown'}\` — <t:${minTs}:T>`,
+        content: `<@${killerId}> ⏰ **${boss.bossName}** is spawning in ~10 minutes! <:tortugas:1511020006350127114>\nMap: \`${boss.location || 'Unknown'}\` — <t:${minTs}:T>`,
         components: [row],
       });
     } catch (e) {
@@ -173,7 +173,7 @@ async function handleMvpMessage(message) {
     if (!found) return message.reply(`❌ No active timer found for \`${query}\`.`);
     if (found.timer.timerId) clearTimeout(found.timer.timerId);
     activeTimers.delete(found.key);
-    return message.reply(`✅ Timer for **${found.timer.boss.bossName}** removed. :tortugas:`);
+    return message.reply(`✅ Timer for **${found.timer.boss.bossName}** removed. <:tortugas:1511020006350127114>`);
   }
 
   if (content.toLowerCase().startsWith('!edit')) {
@@ -186,7 +186,7 @@ async function handleMvpMessage(message) {
     const killTime = Date.now();
     const { minSpawn, maxSpawn } = registerBossKill(boss, killTime, killerId, message.channel);
     const embed = buildTimerEmbed(boss, killTime, minSpawn, maxSpawn);
-    return message.reply({ content: `✅ Timer for **${boss.bossName}** reset to now. :tortugas:`, embeds: [embed] });
+    return message.reply({ content: `✅ Timer for **${boss.bossName}** reset to now. <:tortugas:1511020006350127114>`, embeds: [embed] });
   }
 
   // Disambiguation reply
@@ -238,7 +238,7 @@ async function handleMvpMessage(message) {
   pendingDisambig.set(userId, { matches });
   setTimeout(() => pendingDisambig.delete(userId), 60000);
   const options = matches.map((b, i) => `\`${i + 1}\` — **${b.bossName}** (${b.location || 'unknown map'})`).join('\n');
-  return message.reply(`🤔 Multiple bosses found for **"${content}"**. Which one died, TORTUGAS? :tortugas:\n\n${options}\n\nReply with the number.`);
+  return message.reply(`🤔 Multiple bosses found for **"${content}"**. Which one died, TORTUGAS? <:tortugas:1511020006350127114>\n\n${options}\n\nReply with the number.`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -470,7 +470,7 @@ function buildPartyEmbed(instanceKey, slots, hour, creatorId) {
   ].join('\n');
 
   const embed = new EmbedBuilder()
-    .setTitle(`${tpl.fullName} Party :tortugas:${isFull ? ' ✅ FULL' : ''}`)
+    .setTitle(`${tpl.fullName} Party <:tortugas:1511020006350127114>${isFull ? ' ✅ FULL' : ''}`)
     .setColor(isFull ? 0x00ff00 : 0x5865f2)
     .setDescription(lines.join('\n'))
     .addFields(
@@ -534,7 +534,7 @@ function scheduleReminders(thread, state) {
     reminders.push(setTimeout(async () => {
       try {
         const mentions = getRegisteredMentions(state.slots);
-        await thread.send(`⏰ Tomorrow instance at <t:${state.hour}:F> :tortugas:\n${mentions}`);
+        await thread.send(`⏰ Tomorrow instance at <t:${state.hour}:F> <:tortugas:1511020006350127114>\n${mentions}`);
       } catch (e) { console.error('24h reminder failed:', e); }
     }, firstDelay));
   }
@@ -544,7 +544,7 @@ function scheduleReminders(thread, state) {
     reminders.push(setTimeout(async () => {
       try {
         const mentions = getRegisteredMentions(state.slots);
-        await thread.send(`🔥 It's time to log in, TORTUGAS! :tortugas:\n${mentions}`);
+        await thread.send(`🔥 It's time to log in, TORTUGAS! <:tortugas:1511020006350127114>\n${mentions}`);
       } catch (e) { console.error('10m reminder failed:', e); }
     }, secondDelay));
   }
@@ -579,7 +579,7 @@ async function handleInstanceCommand(message) {
 
   if (content.toLowerCase() === '!launch') {
     return message.reply(
-      `🚀 **Revenant Elegy Launch** :tortugas:\n📅 <t:${LAUNCH_TIMESTAMP}:F>\n⏳ <t:${LAUNCH_TIMESTAMP}:R>`
+      `🚀 **Revenant Elegy Launch** <:tortugas:1511020006350127114>\n📅 <t:${LAUNCH_TIMESTAMP}:F>\n⏳ <t:${LAUNCH_TIMESTAMP}:R>`
     );
   }
 
@@ -587,7 +587,7 @@ async function handleInstanceCommand(message) {
     try {
       const health = await fetchServerHealth();
       return message.reply(
-        `**🖥️ Server Status** :tortugas:\n` +
+        `**🖥️ Server Status** <:tortugas:1511020006350127114>\n` +
         `Login: ${statusIcon(health.login)} | Char: ${statusIcon(health.char)} | Map: ${statusIcon(health.map)}\n` +
         `👥 Players online: **${health.count}** (${health.unique} unique, ${health.multiclients} multiclient)\n` +
         `🛒 Autotraders/merchants: **${health.autotraders}**`
@@ -602,7 +602,7 @@ async function handleInstanceCommand(message) {
       const health = await fetchServerHealth();
       return message.reply(
         `👥 **Players online:** ${health.count} (${health.unique} unique, ${health.multiclients} multiclient)\n` +
-        `🛒 **Autotraders/merchants:** ${health.autotraders} :tortugas:`
+        `🛒 **Autotraders/merchants:** ${health.autotraders} <:tortugas:1511020006350127114>`
       );
     } catch (e) {
       return message.reply('❌ Could not reach the server health API.');
@@ -612,7 +612,7 @@ async function handleInstanceCommand(message) {
   if (content.toLowerCase().startsWith('!instance')) {
     const args = content.slice('!instance'.length).trim();
     if (!args) {
-      return message.reply('❌ Available: `ifirth`, `valk`, `bio3`, `et`, `sealed shrine`, `bee`, `captain`, `open` :tortugas:');
+      return message.reply('❌ Available: `ifirth`, `valk`, `bio3`, `et`, `sealed shrine`, `bee`, `captain`, `open` <:tortugas:1511020006350127114>');
     }
 
     const instanceKey = resolveInstanceKey(args);
@@ -647,7 +647,7 @@ async function handleInstanceCommand(message) {
       const instanceState = { instanceKey: freeKey, slots, creatorId: message.author.id, hour: defaultHour, mainMessageId: firstMessage.id };
       activeInstances.set(thread.id, instanceState);
       scheduleReminders(thread, instanceState);
-      return message.reply(`✅ Party thread created :tortugas: ${thread.url}`);
+      return message.reply(`✅ Party thread created <:tortugas:1511020006350127114> ${thread.url}`);
     }
 
     const tpl = INSTANCE_TEMPLATES[instanceKey];
@@ -675,7 +675,7 @@ async function handleInstanceCommand(message) {
     const instanceState = { instanceKey, slots, creatorId: message.author.id, hour: defaultHour, mainMessageId: firstMessage.id };
     activeInstances.set(thread.id, instanceState);
     scheduleReminders(thread, instanceState);
-    return message.reply(`✅ Instance thread created :tortugas: ${thread.url}`);
+    return message.reply(`✅ Instance thread created <:tortugas:1511020006350127114> ${thread.url}`);
   }
 
   if (content.toLowerCase().startsWith('!party')) {
@@ -706,7 +706,7 @@ async function handleInstanceCommand(message) {
     const instanceState = { instanceKey: 'party', slots, creatorId: message.author.id, hour: defaultHour, mainMessageId: firstMessage.id };
     activeInstances.set(thread.id, instanceState);
     scheduleReminders(thread, instanceState);
-    return message.reply(`✅ Party thread created :tortugas: ${thread.url}`);
+    return message.reply(`✅ Party thread created <:tortugas:1511020006350127114> ${thread.url}`);
   }
 }
 
@@ -745,7 +745,7 @@ async function handleThreadMessage(message) {
     state.hour = ts;
     scheduleReminders(thread, state);
     await updateMainMessage(thread, state);
-    return message.reply(`✅ Instance time set to <t:${ts}:F> :tortugas:`);
+    return message.reply(`✅ Instance time set to <t:${ts}:F> <:tortugas:1511020006350127114>`);
   }
 
   if (content.toLowerCase() === '$out') {
@@ -754,7 +754,7 @@ async function handleThreadMessage(message) {
     slots[idx].player = null;
     slots[idx].userId = null;
     await updateMainMessage(thread, state);
-    return message.reply(`✅ ${username} removed from slot ${idx + 1}. :tortugas:`);
+    return message.reply(`✅ ${username} removed from slot ${idx + 1}. <:tortugas:1511020006350127114>`);
   }
 
   if (content.toLowerCase().startsWith('$clear')) {
@@ -767,7 +767,7 @@ async function handleThreadMessage(message) {
     slots[idx].player = null;
     slots[idx].userId = null;
     await updateMainMessage(thread, state);
-    return message.reply(`✅ Cleared slot ${num}${was ? ` (was ${was})` : ''}. :tortugas:`);
+    return message.reply(`✅ Cleared slot ${num}${was ? ` (was ${was})` : ''}. <:tortugas:1511020006350127114>`);
   }
 
   if (content.toLowerCase() === '$fill') {
@@ -780,10 +780,10 @@ async function handleThreadMessage(message) {
     slots[fillIdx].userId = userId;
     await updateMainMessage(thread, state);
     const filled = slots.filter(s => s.player !== null).length;
-    let reply = `✅ Signed up as **FILL SPOT** (slot ${fillIdx + 1}). :tortugas:`;
+    let reply = `✅ Signed up as **FILL SPOT** (slot ${fillIdx + 1}). <:tortugas:1511020006350127114>`;
     if (filled === PARTY_SIZE) {
       reply += '\n🎉 Party is full!';
-      await thread.send('🎉 Party is now full! :tortugas:');
+      await thread.send('🎉 Party is now full! <:tortugas:1511020006350127114>');
     }
     return message.reply(reply);
   }
@@ -804,7 +804,7 @@ async function handleThreadMessage(message) {
     slots[targetIdx].player   = username;
     slots[targetIdx].userId   = userId;
     await updateMainMessage(thread, state);
-    return message.reply(`✅ Moved to slot ${targetIdx + 1} (**${slots[targetIdx].role}**). :tortugas:`);
+    return message.reply(`✅ Moved to slot ${targetIdx + 1} (**${slots[targetIdx].role}**). <:tortugas:1511020006350127114>`);
   }
 
   if (content.toLowerCase().startsWith('$rename')) {
@@ -819,7 +819,7 @@ async function handleThreadMessage(message) {
     const idx = num - 1;
     slots[idx].role = newName;
     await updateMainMessage(thread, state);
-    return message.reply(`✅ Slot ${num} renamed to **${newName}**. :tortugas:`);
+    return message.reply(`✅ Slot ${num} renamed to **${newName}**. <:tortugas:1511020006350127114>`);
   }
 
   if (content.startsWith('$')) {
@@ -843,10 +843,10 @@ async function handleThreadMessage(message) {
     slots[targetIdx].userId = userId;
     await updateMainMessage(thread, state);
     const newFilled = slots.filter(s => s.player !== null).length;
-    let reply = `✅ Signed up as **${slots[targetIdx].role}** (slot ${targetIdx + 1}). :tortugas:`;
+    let reply = `✅ Signed up as **${slots[targetIdx].role}** (slot ${targetIdx + 1}). <:tortugas:1511020006350127114>`;
     if (newFilled === PARTY_SIZE) {
       reply += '\n🎉 Party is full!';
-      await thread.send('🎉 The party is now full! :tortugas:');
+      await thread.send('🎉 The party is now full! <:tortugas:1511020006350127114>');
     }
     return message.reply(reply);
   }
@@ -1188,7 +1188,7 @@ async function scanForDeals(channel) {
   if (current) chunks.push(current);
   for (let i = 0; i < chunks.length; i++) {
     const embed = new EmbedBuilder()
-      .setTitle(i === 0 ? `🔥 Market Deals :tortugas: (${deals.length})` : `🔥 Market Deals :tortugas: (cont.)`)
+      .setTitle(i === 0 ? `🔥 Market Deals <:tortugas:1511020006350127114> (${deals.length})` : `🔥 Market Deals <:tortugas:1511020006350127114> (cont.)`)
       .setColor(0xf1c40f)
       .setDescription(chunks[i])
       .setTimestamp();
@@ -1207,11 +1207,11 @@ async function handleWhoSells(message, fullQuery) {
   try { listings = await fetchItemListings(nameid); }
   catch (e) { return message.reply('❌ Failed to fetch market data.'); }
   const item_name = listings[0]?.item_name || nameCache.get(nameid) || itemIndex.get(nameid)?.name || `Item #${nameid}`;
-  if (listings.length === 0) return message.reply(`📦 No one is selling **${item_name}** right now. :tortugas:`);
+  if (listings.length === 0) return message.reply(`📦 No one is selling **${item_name}** right now. <:tortugas:1511020006350127114>`);
   let filtered = filters.length > 0 ? listings.filter(l => hasAllFilters(l, filters)) : listings;
   if (filters.length > 0 && filtered.length === 0) {
     const ft = filters.map(f => `${OPTION_MAP[f.id] || f.id} ≥ ${f.value}`).join(', ');
-    return message.reply(`📦 No listings for **${item_name}** with filters: **${ft}** :tortugas:`);
+    return message.reply(`📦 No listings for **${item_name}** with filters: **${ft}** <:tortugas:1511020006350127114>`);
   }
   const sorted     = filtered.sort((a, b) => a.price - b.price).slice(0, 8);
   const med        = median(filtered.map(l => l.price));
@@ -1242,7 +1242,7 @@ async function handlePriceHistory(message, query) {
   const item_name = nameCache.get(nameid) || itemIndex.get(nameid)?.name || `Item #${nameid}`;
   const results   = history.results || history;
   if (!Array.isArray(results) || results.length === 0)
-    return message.reply(`📦 No price history for **[${item_name}](${itemPageUrl(nameid)})**. :tortugas:`);
+    return message.reply(`📦 No price history for **[${item_name}](${itemPageUrl(nameid)})**. <:tortugas:1511020006350127114>`);
   const recent = results.slice(0, 10);
   const prices = recent.map(r => r.price);
   const med    = median(prices);
@@ -1267,7 +1267,7 @@ async function handlePriceHistory(message, query) {
 
 async function handleItemInfo(message, query) {
   if (!mobCacheLoaded) {
-    await message.reply('⏳ Item database is still loading, please try again in a few seconds. :tortugas:');
+    await message.reply('⏳ Item database is still loading, please try again in a few seconds. <:tortugas:1511020006350127114>');
     return;
   }
   const matches = searchItems(query);
@@ -1319,11 +1319,11 @@ async function handleItemInfo(message, query) {
 
 async function handleWhoDrops(message, query) {
   if (!mobCacheLoaded) {
-    await message.reply('⏳ Monster database is still loading, please try again in a few seconds. :tortugas:');
+    await message.reply('⏳ Monster database is still loading, please try again in a few seconds. <:tortugas:1511020006350127114>');
     return;
   }
   const results = findMobDrops(query);
-  if (results.length === 0) return message.reply(`❌ No monsters found dropping \`${query}\`. :tortugas:`);
+  if (results.length === 0) return message.reply(`❌ No monsters found dropping \`${query}\`. <:tortugas:1511020006350127114>`);
   const itemName = results[0].drop.item_name || query;
   const itemId   = results[0].drop.item_id;
   const mvpDrops    = results.filter(r => r.isMvp);
@@ -1353,7 +1353,7 @@ async function handleOptionsList(message) {
   const col2    = entries.slice(third, third * 2).map(([id, name]) => `\`${String(id).padStart(3)}\` ${name}`).join('\n');
   const col3    = entries.slice(third * 2).map(([id, name]) => `\`${String(id).padStart(3)}\` ${name}`).join('\n');
   const embed   = new EmbedBuilder()
-    .setTitle('🎲 Random Option IDs :tortugas:')
+    .setTitle('🎲 Random Option IDs <:tortugas:1511020006350127114>')
     .setColor(0x9b59b6)
     .setDescription('```ansi\n' + col1.padEnd(40) + '   ' + col2.padEnd(40) + '   ' + col3 + '\n```')
     .addFields(
@@ -1365,7 +1365,7 @@ async function handleOptionsList(message) {
 
 async function handleMobInfo(message, query) {
   if (!mobCacheLoaded) {
-    await message.reply('⏳ Monster database is still loading, please try again in a few seconds. :tortugas:');
+    await message.reply('⏳ Monster database is still loading, please try again in a few seconds. <:tortugas:1511020006350127114>');
     return;
   }
   const asNum  = parseInt(query);
@@ -1373,7 +1373,7 @@ async function handleMobInfo(message, query) {
   let matches  = [];
   if (!isNaN(asNum)) { matches = mobCache.filter(m => m.Id === asNum); }
   else { matches = mobCache.filter(m => mNormalize(m.Name).includes(lowerQ)); }
-  if (matches.length === 0) return message.reply(`❌ No monster found for \`${query}\`. :tortugas:`);
+  if (matches.length === 0) return message.reply(`❌ No monster found for \`${query}\`. <:tortugas:1511020006350127114>`);
   if (matches.length > 1) {
     const lines = matches.slice(0, 25).map(m =>
       `• **[${m.Name}](<${mobPageUrl(m.Id)}>)** — ID: \`${m.Id}\` | Lv.${m.Level} | ${m.Race} | ${m.Element} ${m.ElementLevel}`
@@ -1406,7 +1406,7 @@ async function handleMobInfo(message, query) {
     `Hit (100%): **${mob['100hit'] ?? '?'}** | Flee (95%): **${mob['95flee'] ?? '?'}**`,
   ].join('\n');
   const embed = new EmbedBuilder()
-    .setTitle(`👾 ${mob.Name} (ID: ${mob.Id}) :tortugas:`)
+    .setTitle(`👾 ${mob.Name} (ID: ${mob.Id}) <:tortugas:1511020006350127114>`)
     .setURL(mobPageUrl(mob.Id))
     .setColor(0xe74c3c)
     .setThumbnail(`https://static.divine-pride.net/images/mobs/png/${mob.Id}.png`)
@@ -1459,7 +1459,7 @@ client.on('interactionCreate', async (interaction) => {
       .setDisabled(true);
     const disabledRow = new ActionRowBuilder().addComponents(disabledButton);
     await interaction.update({ components: [disabledRow] });
-    return interaction.followUp({ content: `🔁 **${boss.bossName}** killed again by <@${interaction.user.id}>! Timer reset. :tortugas:`, embeds: [embed] });
+    return interaction.followUp({ content: `🔁 **${boss.bossName}** killed again by <@${interaction.user.id}>! Timer reset. <:tortugas:1511020006350127114>`, embeds: [embed] });
   }
 
   // ── Instance interactions ──────────────────────────────────────────────
@@ -1481,7 +1481,7 @@ client.on('interactionCreate', async (interaction) => {
     slots[idx].player = null;
     slots[idx].userId = null;
     await updateMainMessage(interaction.channel, state);
-    return interaction.reply({ content: '✅ You have signed out. :tortugas:', ephemeral: true });
+    return interaction.reply({ content: '✅ You have signed out. <:tortugas:1511020006350127114>', ephemeral: true });
   }
 
   if (interaction.isStringSelectMenu() && interaction.customId === 'instance_signup') {
@@ -1512,10 +1512,10 @@ client.on('interactionCreate', async (interaction) => {
 
     await updateMainMessage(interaction.channel, state);
     const newFilled = slots.filter(s => s.player !== null).length;
-    let reply = `✅ Signed up as **${slots[targetIdx].role}** (slot ${targetIdx + 1}). :tortugas:`;
+    let reply = `✅ Signed up as **${slots[targetIdx].role}** (slot ${targetIdx + 1}). <:tortugas:1511020006350127114>`;
     if (newFilled === PARTY_SIZE) {
       reply += '\n🎉 Party is full!';
-      await interaction.channel.send('🎉 The party is now full! :tortugas:');
+      await interaction.channel.send('🎉 The party is now full! <:tortugas:1511020006350127114>');
     }
     return interaction.reply({ content: reply, ephemeral: true });
   }
