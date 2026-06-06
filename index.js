@@ -23,7 +23,7 @@ const INSTANCES_FORUM_CHANNEL_ID = process.env.INSTANCES_FORUM_CHANNEL_ID;
 
 // ─── Shared config ─────────────────────────────────────────────────────────
 const SERVER_HEALTH_URL = process.env.SERVER_HEALTH_URL || 'https://revenantelegy.com/api/v1.0/serverhealth/';
-const LAUNCH_TIMESTAMP  = Math.floor(new Date('2026-06-12T19:00:00Z').getTime() / 1000);
+const LAUNCH_TIMESTAMP  = Math.floor(new Date('2026-06-12T17:00:00Z').getTime() / 1000);
 
 async function fetchServerHealth() {
   const res = await fetch(SERVER_HEALTH_URL);
