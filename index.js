@@ -245,7 +245,24 @@ async function handleMvpMessage(message) {
 //  INSTANCE BOT
 // ═══════════════════════════════════════════════════════════════════════════
 
-const PARTY_SIZE = 14;
+const PARTY_SIZE        = 14;
+const ACTIVE_PARTY_SIZE = 12;
+
+function isBenchSlot(idx) { return idx >= ACTIVE_PARTY_SIZE; }
+
+function countActiveMembers(slots) {
+  return slots.slice(0, ACTIVE_PARTY_SIZE).filter((s) => s.player !== null).length;
+}
+
+function isPartyFull(slots) {
+  return countActiveMembers(slots) === ACTIVE_PARTY_SIZE;
+}
+
+function makeDefaultSlots(fillRole = 'FILL SPOT') {
+  const slots = Array.from({ length: ACTIVE_PARTY_SIZE }, () => ({ role: fillRole, player: null, userId: null }));
+  slots.push({ role: 'BENCH', player: null, userId: null }, { role: 'BENCH', player: null, userId: null });
+  return slots;
+}
 const reminderTimers = new Map();
 
 const INSTANCE_TEMPLATES = {
@@ -264,8 +281,8 @@ const INSTANCE_TEMPLATES = {
       { role: 'LINKER',   player: null, userId: null },
       { role: 'HP 1',     player: null, userId: null },
       { role: 'HP 2',     player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
     ],
     hasFillSpots: true,
   },
@@ -284,8 +301,8 @@ const INSTANCE_TEMPLATES = {
       { role: 'LINKER',   player: null, userId: null },
       { role: 'HP 1',     player: null, userId: null },
       { role: 'HP 2',     player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
     ],
     hasFillSpots: true,
   },
@@ -304,8 +321,8 @@ const INSTANCE_TEMPLATES = {
       { role: 'FILL SPOT',player: null, userId: null },
       { role: 'FILL SPOT',player: null, userId: null },
       { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
     ],
     hasFillSpots: true,
   },
@@ -324,8 +341,8 @@ const INSTANCE_TEMPLATES = {
       { role: 'LINKER',   player: null, userId: null },
       { role: 'HP 1',     player: null, userId: null },
       { role: 'HP 2',     player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
     ],
     hasFillSpots: true,
   },
@@ -344,8 +361,8 @@ const INSTANCE_TEMPLATES = {
       { role: 'LINKER',   player: null, userId: null },
       { role: 'HP 1',     player: null, userId: null },
       { role: 'HP 2',     player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
     ],
     hasFillSpots: true,
   },
@@ -364,8 +381,8 @@ const INSTANCE_TEMPLATES = {
       { role: 'LINKER',   player: null, userId: null },
       { role: 'HP 1',     player: null, userId: null },
       { role: 'HP 2',     player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
     ],
     hasFillSpots: true,
   },
@@ -384,14 +401,14 @@ const INSTANCE_TEMPLATES = {
       { role: 'LINKER',   player: null, userId: null },
       { role: 'HP 1',     player: null, userId: null },
       { role: 'HP 2',     player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
-      { role: 'FILL SPOT',player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
+      { role: 'BENCH',    player: null, userId: null },
     ],
     hasFillSpots: true,
   },
   open: {
     fullName: 'Open Party',
-    slots: Array.from({ length: 14 }, () => ({ role: 'FILL SPOT', player: null, userId: null })),
+    slots: makeDefaultSlots(),
     hasFillSpots: true,
   },
   party: {
@@ -401,16 +418,16 @@ const INSTANCE_TEMPLATES = {
       { role: 'MOBBER',     player: null, userId: null },
       { role: 'MOBBER',     player: null, userId: null },
       { role: 'MOBBER',     player: null, userId: null },
+      { role: 'MOBBER/TAPPER', player: null, userId: null },
+      { role: 'TAPPER',     player: null, userId: null },
       { role: 'CLOWN',      player: null, userId: null },
-      { role: 'GYPSY',      player: null, userId: null },
-      { role: 'HP',         player: null, userId: null },
-      { role: 'HP',         player: null, userId: null },
+      { role: 'GYPSY/SCHOLAR', player: null, userId: null },
       { role: 'HW',         player: null, userId: null },
-      { role: 'ICEBREAKER', player: null, userId: null },
-      { role: 'FILL SPOT',  player: null, userId: null },
-      { role: 'FILL SPOT',  player: null, userId: null },
-      { role: 'FILL SPOT',  player: null, userId: null },
-      { role: 'FILL SPOT',  player: null, userId: null },
+      { role: 'HW/TAPPER',  player: null, userId: null },
+      { role: 'HP',         player: null, userId: null },
+      { role: 'HP',         player: null, userId: null },
+      { role: 'BENCH',      player: null, userId: null },
+      { role: 'BENCH',      player: null, userId: null },
     ],
     hasFillSpots: true,
   },
@@ -449,15 +466,17 @@ function getDefaultFridayHour() {
   return Math.floor(friday.getTime() / 1000);
 }
 
-function buildPartyEmbed(instanceKey, slots, hour, creatorId) {
+function buildPartyEmbed(instanceKey, slots, hour, creatorId, displayName) {
   const tpl    = INSTANCE_TEMPLATES[instanceKey];
-  const filled = slots.filter((s) => s.player !== null).length;
-  const isFull = filled === PARTY_SIZE;
+  const filled = countActiveMembers(slots);
+  const isFull = isPartyFull(slots);
 
-  const lines = slots.map((s, i) => {
+  const lines = [];
+  slots.forEach((s, i) => {
+    if (i === ACTIVE_PARTY_SIZE) lines.push('');
     const num    = `\`${String(i + 1).padStart(2, '0')}.\``;
     const player = s.player ? `<@${s.userId}>` : '—';
-    return `${num} **${s.role}**: ${player}`;
+    lines.push(`${num} **${s.role}**: ${player}`);
   });
 
   const commands = [
@@ -469,13 +488,14 @@ function buildPartyEmbed(instanceKey, slots, hour, creatorId) {
     '↕️ Use the **dropdown below** to pick your role',
   ].join('\n');
 
+  const titleName = displayName || `${tpl.fullName} Party`;
   const embed = new EmbedBuilder()
-    .setTitle(`${tpl.fullName} Party <:tortugas:1511020006350127114>${isFull ? ' ✅ FULL' : ''}`)
+    .setTitle(`${titleName} <:tortugas:1511020006350127114>${isFull ? ' ✅ FULL' : ''}`)
     .setColor(isFull ? 0x00ff00 : 0x5865f2)
     .setDescription(lines.join('\n'))
     .addFields(
-      { name: 'Spots',      value: `${filled}/${PARTY_SIZE}`, inline: true },
-      { name: 'Created by', value: `<@${creatorId}>`,         inline: true }
+      { name: 'Spots',      value: `${filled}/${ACTIVE_PARTY_SIZE}`, inline: true },
+      { name: 'Created by', value: `<@${creatorId}>`,               inline: true }
     );
 
   if (hour) {
@@ -558,7 +578,7 @@ async function updateMainMessage(thread, state) {
     const dropdown = buildDropdown(state.instanceKey, state.slots);
     const signout  = buildSignOutButton();
     await msg.edit({
-      embeds:     [buildPartyEmbed(state.instanceKey, state.slots, state.hour, state.creatorId)],
+      embeds:     [buildPartyEmbed(state.instanceKey, state.slots, state.hour, state.creatorId, state.displayName)],
       components: [dropdown, signout],
     });
   } catch (e) {
@@ -625,7 +645,7 @@ async function handleInstanceCommand(message) {
       if (forumChannel.type !== ChannelType.GuildForum)
         return message.reply('❌ INSTANCES_FORUM_CHANNEL_ID is not a forum channel.');
 
-      const slots       = Array.from({ length: 14 }, () => ({ role: 'FILL SPOT', player: null, userId: null }));
+      const slots       = makeDefaultSlots();
       const defaultHour = getDefaultFridayHour();
       const freeKey     = '__freetext__';
       if (!INSTANCE_TEMPLATES[freeKey]) INSTANCE_TEMPLATES[freeKey] = { fullName: args, slots: [], hasFillSpots: true };
@@ -690,7 +710,7 @@ async function handleInstanceCommand(message) {
 
     const slots       = deepCopySlots(INSTANCE_TEMPLATES.party.slots);
     const defaultHour = getDefaultFridayHour();
-    const embed       = buildPartyEmbed('party', slots, defaultHour, message.author.id);
+    const embed       = buildPartyEmbed('party', slots, defaultHour, message.author.id, args);
     const dropdown    = buildDropdown('party', slots);
     const signout     = buildSignOutButton();
 
@@ -703,7 +723,7 @@ async function handleInstanceCommand(message) {
     } catch (e) { console.error(e); return message.reply('❌ Failed to create thread.'); }
 
     const firstMessage  = await thread.fetchStarterMessage();
-    const instanceState = { instanceKey: 'party', slots, creatorId: message.author.id, hour: defaultHour, mainMessageId: firstMessage.id };
+    const instanceState = { instanceKey: 'party', slots, creatorId: message.author.id, hour: defaultHour, mainMessageId: firstMessage.id, displayName: args };
     activeInstances.set(thread.id, instanceState);
     scheduleReminders(thread, instanceState);
     return message.reply(`✅ Party thread created <:tortugas:1511020006350127114> ${thread.url}`);
@@ -725,7 +745,7 @@ async function handleThreadMessage(message) {
     const dropdown = buildDropdown(state.instanceKey, state.slots);
     const signout  = buildSignOutButton();
     return thread.send({
-      embeds:     [buildPartyEmbed(state.instanceKey, state.slots, state.hour, state.creatorId)],
+      embeds:     [buildPartyEmbed(state.instanceKey, state.slots, state.hour, state.creatorId, state.displayName)],
       components: [dropdown, signout],
     });
   }
@@ -772,16 +792,15 @@ async function handleThreadMessage(message) {
 
   if (content.toLowerCase() === '$fill') {
     if (!tpl.hasFillSpots) return message.reply('❌ This instance has no fill spots.');
-    const fillIdx = slots.findIndex(s => s.role === 'FILL SPOT' && s.player === null);
+    const fillIdx = slots.findIndex((s, i) => i < ACTIVE_PARTY_SIZE && s.role === 'FILL SPOT' && s.player === null);
     if (fillIdx === -1) return message.reply('❌ All fill spots are taken!');
     const existing = slots.findIndex(s => s.userId === userId);
     if (existing !== -1) return message.reply(`❌ You're already in slot ${existing + 1}.`);
     slots[fillIdx].player = username;
     slots[fillIdx].userId = userId;
     await updateMainMessage(thread, state);
-    const filled = slots.filter(s => s.player !== null).length;
     let reply = `✅ Signed up as **FILL SPOT** (slot ${fillIdx + 1}). <:tortugas:1511020006350127114>`;
-    if (filled === PARTY_SIZE) {
+    if (isPartyFull(slots)) {
       reply += '\n🎉 Party is full!';
       await thread.send('🎉 Party is now full! <:tortugas:1511020006350127114>');
     }
@@ -825,13 +844,13 @@ async function handleThreadMessage(message) {
   if (content.startsWith('$')) {
     const arg = content.slice(1).trim().toLowerCase();
     if (!arg) return;
-    const filledCount = slots.filter(s => s.player !== null).length;
-    if (filledCount === PARTY_SIZE) return message.reply('❌ The party is full!');
     const existingIdx = slots.findIndex(s => s.userId === userId);
     let targetIdx     = parseInt(arg);
     if (!isNaN(targetIdx)) { targetIdx -= 1; }
     else { targetIdx = findSlotByRole(slots, arg); }
     if (targetIdx < 0 || targetIdx >= PARTY_SIZE) return message.reply('❌ Invalid slot/role.');
+    if (!isBenchSlot(targetIdx) && isPartyFull(slots) && existingIdx === -1)
+      return message.reply('❌ The party is full!');
     if (slots[targetIdx].role === 'FILL SPOT') return message.reply('❌ Use `$fill` for fill spots.');
     if (slots[targetIdx].player !== null && slots[targetIdx].userId !== userId)
       return message.reply(`❌ Slot taken by <@${slots[targetIdx].userId}>.`);
@@ -842,9 +861,8 @@ async function handleThreadMessage(message) {
     slots[targetIdx].player = username;
     slots[targetIdx].userId = userId;
     await updateMainMessage(thread, state);
-    const newFilled = slots.filter(s => s.player !== null).length;
     let reply = `✅ Signed up as **${slots[targetIdx].role}** (slot ${targetIdx + 1}). <:tortugas:1511020006350127114>`;
-    if (newFilled === PARTY_SIZE) {
+    if (!isBenchSlot(targetIdx) && isPartyFull(slots)) {
       reply += '\n🎉 Party is full!';
       await thread.send('🎉 The party is now full! <:tortugas:1511020006350127114>');
     }
@@ -948,7 +966,7 @@ function formatDropRate(rate) { return `${(rate / 100).toFixed(2)}%`; }
 function itemImageUrl(nameid)  { return `https://static.divine-pride.net/images/items/item/${nameid}.png`; }
 function itemPageUrl(nameid)   { return `${ITEM_PAGE_BASE}/${nameid}`; }
 function dbItemPageUrl(nameid) { return `${DB_ITEM_PAGE_BASE}/${nameid}`; }
-function mobPageUrl(mobId)     { return `https://revenantelegy.com/database/monster/${mobId}`; }
+function mobPageUrl(mobId)     { return `https://revenantelegy.com/database/mob/${mobId}`; }
 
 function parseWsQuery(fullQuery) {
   const parts   = fullQuery.trim().split(/\s+/);
@@ -1485,35 +1503,27 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   if (interaction.isStringSelectMenu() && interaction.customId === 'instance_signup') {
-    const targetIdx  = parseInt(interaction.values[0]);
-    const filledCount = slots.filter(s => s.player !== null).length;
-    if (filledCount === PARTY_SIZE)
+    const targetIdx   = parseInt(interaction.values[0]);
+    const existingIdx = slots.findIndex(s => s.userId === userId);
+    if (!isBenchSlot(targetIdx) && isPartyFull(slots) && existingIdx === -1)
       return interaction.reply({ content: '❌ The party is full!', ephemeral: true });
 
-    if (slots[targetIdx].role === 'FILL SPOT') {
-      const existing = slots.findIndex(s => s.userId === userId);
-      if (existing !== -1)
-        return interaction.reply({ content: `❌ You're already in slot ${existing + 1}.`, ephemeral: true });
-      if (slots[targetIdx].player !== null)
-        return interaction.reply({ content: '❌ That fill spot is taken.', ephemeral: true });
-      slots[targetIdx].player = username;
-      slots[targetIdx].userId = userId;
-    } else {
-      if (slots[targetIdx].player !== null && slots[targetIdx].userId !== userId)
-        return interaction.reply({ content: `❌ **${slots[targetIdx].role}** is taken by <@${slots[targetIdx].userId}>.`, ephemeral: true });
-      const existingIdx = slots.findIndex(s => s.userId === userId);
-      if (existingIdx !== -1 && existingIdx !== targetIdx) {
-        slots[existingIdx].player = null;
-        slots[existingIdx].userId = null;
-      }
-      slots[targetIdx].player = username;
-      slots[targetIdx].userId = userId;
+    if (existingIdx === targetIdx)
+      return interaction.reply({ content: `ℹ️ You're already in slot ${targetIdx + 1}.`, ephemeral: true });
+
+    if (slots[targetIdx].player !== null && slots[targetIdx].userId !== userId)
+      return interaction.reply({ content: `❌ **${slots[targetIdx].role}** is taken by <@${slots[targetIdx].userId}>.`, ephemeral: true });
+
+    if (existingIdx !== -1) {
+      slots[existingIdx].player = null;
+      slots[existingIdx].userId = null;
     }
+    slots[targetIdx].player = username;
+    slots[targetIdx].userId = userId;
 
     await updateMainMessage(interaction.channel, state);
-    const newFilled = slots.filter(s => s.player !== null).length;
     let reply = `✅ Signed up as **${slots[targetIdx].role}** (slot ${targetIdx + 1}). <:tortugas:1511020006350127114>`;
-    if (newFilled === PARTY_SIZE) {
+    if (!isBenchSlot(targetIdx) && isPartyFull(slots)) {
       reply += '\n🎉 Party is full!';
       await interaction.channel.send('🎉 The party is now full! <:tortugas:1511020006350127114>');
     }
