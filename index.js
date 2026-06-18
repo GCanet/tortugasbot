@@ -2,8 +2,10 @@ require('dotenv').config();
 const {
   Client, GatewayIntentBits, ChannelType, EmbedBuilder,
   ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-  ButtonBuilder, ButtonStyle,
+  ButtonBuilder, ButtonStyle, MessageFlags,
 } = require('discord.js');
+const fs       = require('fs');
+const path     = require('path');
 const bossData = require('./bosses.json');
 
 const client = new Client({
@@ -888,7 +890,122 @@ const MARKET_LEGEND = [
   '`$wd <name or id>` — who drops this item',
   '`$mi <name or id>` — monster info',
   '`$ol` — list all random option IDs & names',
+  '`$watch <id> <price>` — add item to AMETS LIST',
+  '`$unwatch <id>` — remove item from AMETS LIST',
+  '`$watchlist` — show current AMETS LIST',
 ].join('\n');
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  AMETS LIST — Watchlist
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WATCHLIST_PATH = path.join(__dirname, 'watchlist.json');
+
+function loadWatchlist() {
+  try {
+    if (fs.existsSync(WATCHLIST_PATH)) return JSON.parse(fs.readFileSync(WATCHLIST_PATH, 'utf8'));
+  } catch (e) { console.error('[Watchlist] Failed to load:', e.message); }
+  return {};
+}
+
+function saveWatchlist(data) {
+  try { fs.writeFileSync(WATCHLIST_PATH, JSON.stringify(data, null, 2), 'utf8'); }
+  catch (e) { console.error('[Watchlist] Failed to save:', e.message); }
+}
+
+let watchlist = loadWatchlist(); // { [nameid]: { nameid, minPrice, item_name } }
+
+async function handleWatch(message, args) {
+  const parts = args.trim().split(/\s+/);
+  if (parts.length < 2) return message.reply('❌ Usage: `$watch <item_id> <min_price>`');
+  const nameid   = parseInt(parts[0]);
+  const minPrice = parseInt(parts[1]);
+  if (isNaN(nameid) || isNaN(minPrice) || minPrice <= 0)
+    return message.reply('❌ Invalid ID or price. Usage: `$watch <item_id> <min_price>`');
+  const item_name = nameCache.get(nameid) || itemIndex.get(nameid)?.name || `Item #${nameid}`;
+  watchlist[nameid] = { nameid, minPrice, item_name };
+  saveWatchlist(watchlist);
+  return message.reply(`✅ Added **${item_name}** (ID: ${nameid}) to AMETS LIST — alerting below **${formatPrice(minPrice)}**. <:tortugas:1511020006350127114>`);
+}
+
+async function handleUnwatch(message, args) {
+  const nameid = parseInt(args.trim());
+  if (isNaN(nameid)) return message.reply('❌ Usage: `$unwatch <item_id>`');
+  if (!watchlist[nameid]) return message.reply(`❌ Item ID \`${nameid}\` is not in AMETS LIST.`);
+  const item_name = watchlist[nameid].item_name || `Item #${nameid}`;
+  delete watchlist[nameid];
+  saveWatchlist(watchlist);
+  return message.reply(`✅ Removed **${item_name}** from AMETS LIST. <:tortugas:1511020006350127114>`);
+}
+
+async function handleWatchlistShow(message) {
+  const entries = Object.values(watchlist);
+  if (entries.length === 0)
+    return message.reply('📋 AMETS LIST is empty. Use `$watch <id> <price>` to add items. <:tortugas:1511020006350127114>');
+  const lines = entries.map(e => `• **${e.item_name || 'Item #' + e.nameid}** (ID: \`${e.nameid}\`) — below **${formatPrice(e.minPrice)}**`);
+  const embed = new EmbedBuilder()
+    .setTitle('🎯 AMETS LIST <:tortugas:1511020006350127114>')
+    .setColor(0xe67e22)
+    .setDescription(lines.join('\n'))
+    .addFields({ name: '📋 Commands', value: MARKET_LEGEND })
+    .setFooter({ text: `${entries.length} item(s) being tracked | 🐢 TORTUGAS` });
+  return message.reply({ embeds: [embed] });
+}
+
+async function scanAmetsListForDeals(channel) {
+  const entries = Object.values(watchlist);
+  if (entries.length === 0) return;
+  console.log('[AMETS LIST] Scanning watched items...');
+  const dealBlocks = [];
+
+  for (const entry of entries) {
+    let listings;
+    try { listings = await fetchItemListings(entry.nameid); }
+    catch (e) { console.error(`[AMETS LIST] Failed to fetch ${entry.nameid}:`, e.message); continue; }
+    if (!listings || listings.length === 0) continue;
+
+    // Update item name from live data if we have it
+    if (listings[0]?.item_name && !entry.item_name.startsWith('Item #')) {
+      watchlist[entry.nameid].item_name = listings[0].item_name;
+    }
+    const item_name = listings[0]?.item_name || entry.item_name;
+
+    const underThreshold = listings
+      .filter(l => l.price <= entry.minPrice)
+      .sort((a, b) => a.price - b.price);
+
+    if (underThreshold.length === 0) continue;
+
+    const cheapest = underThreshold[0];
+    const block = buildListingBlock(cheapest, { nameid: entry.nameid, item_name, isWs: true });
+    block.unshift(`🎯 **Threshold:** ${formatPrice(entry.minPrice)} | **Found ${underThreshold.length} listing(s)**`);
+    dealBlocks.push({ nameid: entry.nameid, item_name, block: block.join('\n') });
+  }
+
+  if (dealBlocks.length === 0) { console.log('[AMETS LIST] No deals found.'); return; }
+
+  const chunks = [];
+  let current = '';
+  for (const { block } of dealBlocks) {
+    const candidate = current ? current + '\n\n' + block : block;
+    if (candidate.length > 3800) { chunks.push(current); current = block; }
+    else current = candidate;
+  }
+  if (current) chunks.push(current);
+
+  for (let i = 0; i < chunks.length; i++) {
+    const embed = new EmbedBuilder()
+      .setTitle(i === 0 ? `🎯 AMETS LIST <:tortugas:1511020006350127114> (${dealBlocks.length} deal${dealBlocks.length !== 1 ? 's' : ''})` : '🎯 AMETS LIST <:tortugas:1511020006350127114> (cont.)')
+      .setColor(0xe67e22)
+      .setDescription(chunks[i])
+      .setTimestamp();
+    if (i === chunks.length - 1) embed.addFields({ name: '📋 Commands', value: MARKET_LEGEND });
+    await channel.send({ embeds: [embed] });
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  saveWatchlist(watchlist);
+}
 
 const OPTION_MAP = {
   1: 'HP', 2: 'SP', 3: 'STR', 4: 'AGI', 5: 'VIT', 6: 'INT', 7: 'DEX', 8: 'LUK',
@@ -1031,10 +1148,24 @@ function buildListingBlock(listing, opts = {}) {
   return lines;
 }
 
+const PAGE_DELAY_MS = 500;  // delay between paginated requests
+const MAX_RETRIES   = 3;    // retries on 429
+const RETRY_BASE_MS = 2000; // base backoff for 429 retries
+
 async function fetchPage(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(url);
+    if (res.ok) return res.json();
+    if (res.status === 429) {
+      const retryAfter = parseInt(res.headers.get('Retry-After') || '0', 10);
+      const waitMs = retryAfter > 0 ? retryAfter * 1000 : RETRY_BASE_MS * attempt;
+      console.warn(`[Market] 429 on ${url} — waiting ${waitMs}ms before retry ${attempt}/${MAX_RETRIES}`);
+      await new Promise(r => setTimeout(r, waitMs));
+      continue;
+    }
+    throw new Error(`HTTP ${res.status}`);
+  }
+  throw new Error(`HTTP 429 — max retries reached for ${url}`);
 }
 
 async function fetchItemListings(nameid) {
@@ -1048,6 +1179,7 @@ async function fetchItemListings(nameid) {
     if (!data.pages || page >= data.pages) break;
     page++;
     if (page > 20) break;
+    await new Promise(r => setTimeout(r, PAGE_DELAY_MS));
   }
   return listings;
 }
@@ -1063,6 +1195,7 @@ async function* fetchAllListingsPages() {
     yield results;
     if (!data.pages || page >= data.pages) break;
     page++;
+    await new Promise(r => setTimeout(r, PAGE_DELAY_MS));
   }
 }
 
@@ -1462,7 +1595,7 @@ client.on('interactionCreate', async (interaction) => {
       }
     }
     if (!foundKey)
-      return interaction.reply({ content: '❌ Could not find an active timer for this boss.', ephemeral: true });
+      return interaction.reply({ content: '❌ Could not find an active timer for this boss.', flags: MessageFlags.Ephemeral });
 
     const existing = activeTimers.get(foundKey);
     const { boss, killerId } = existing;
@@ -1485,7 +1618,7 @@ client.on('interactionCreate', async (interaction) => {
 
   const state = activeInstances.get(interaction.channel.id);
   if (!state) {
-    return interaction.reply({ content: '❌ This instance is no longer active.', ephemeral: true });
+    return interaction.reply({ content: '❌ This instance is no longer active.', flags: MessageFlags.Ephemeral });
   }
 
   const { slots }  = state;
@@ -1493,26 +1626,29 @@ client.on('interactionCreate', async (interaction) => {
   const username   = interaction.member?.displayName || interaction.user.username;
 
   if (interaction.isButton() && interaction.customId === 'instance_signout') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const idx = slots.findIndex(s => s.userId === userId);
     if (idx === -1)
-      return interaction.reply({ content: "❌ You're not signed up in this party.", ephemeral: true });
+      return interaction.editReply({ content: "❌ You're not signed up in this party." });
     slots[idx].player = null;
     slots[idx].userId = null;
     await updateMainMessage(interaction.channel, state);
-    return interaction.reply({ content: '✅ You have signed out. <:tortugas:1511020006350127114>', ephemeral: true });
+    return interaction.editReply({ content: '✅ You have signed out. <:tortugas:1511020006350127114>' });
   }
 
   if (interaction.isStringSelectMenu() && interaction.customId === 'instance_signup') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const targetIdx   = parseInt(interaction.values[0]);
     const existingIdx = slots.findIndex(s => s.userId === userId);
     if (!isBenchSlot(targetIdx) && isPartyFull(slots) && existingIdx === -1)
-      return interaction.reply({ content: '❌ The party is full!', ephemeral: true });
+      return interaction.editReply({ content: '❌ The party is full!' });
 
     if (existingIdx === targetIdx)
-      return interaction.reply({ content: `ℹ️ You're already in slot ${targetIdx + 1}.`, ephemeral: true });
+      return interaction.editReply({ content: `ℹ️ You're already in slot ${targetIdx + 1}.` });
 
     if (slots[targetIdx].player !== null && slots[targetIdx].userId !== userId)
-      return interaction.reply({ content: `❌ **${slots[targetIdx].role}** is taken by <@${slots[targetIdx].userId}>.`, ephemeral: true });
+      return interaction.editReply({ content: `❌ **${slots[targetIdx].role}** is taken by <@${slots[targetIdx].userId}>.` });
 
     if (existingIdx !== -1) {
       slots[existingIdx].player = null;
@@ -1527,7 +1663,7 @@ client.on('interactionCreate', async (interaction) => {
       reply += '\n🎉 Party is full!';
       await interaction.channel.send('🎉 The party is now full! <:tortugas:1511020006350127114>');
     }
-    return interaction.reply({ content: reply, ephemeral: true });
+    return interaction.editReply({ content: reply });
   }
 });
 
@@ -1559,6 +1695,11 @@ client.on('messageCreate', async (message) => {
     const miMatch  = content.match(/^\$mi\s+(.+)/i);
     if (miMatch)  return handleMobInfo(message, miMatch[1].trim());
     if (content.match(/^\$(optionslist|ol)$/i)) return handleOptionsList(message);
+    const watchMatch   = content.match(/^\$watch\s+(.+)/i);
+    if (watchMatch)   return handleWatch(message, watchMatch[1].trim());
+    const unwatchMatch = content.match(/^\$unwatch\s+(\S+)/i);
+    if (unwatchMatch) return handleUnwatch(message, unwatchMatch[1].trim());
+    if (content.match(/^\$watchlist$/i)) return handleWatchlistShow(message);
     return;
   }
 
@@ -1577,14 +1718,18 @@ client.on('messageCreate', async (message) => {
 //  READY
 // ═══════════════════════════════════════════════════════════════════════════
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log(`[TORTUGAS Bot] Logged in as ${client.user.tag}`);
   await buildNameCache().catch(console.error);
   loadMobCache().catch(console.error);
   const marketChannel = await client.channels.fetch(MARKET_CHANNEL_ID).catch(() => null);
   if (!marketChannel) { console.error('[TORTUGAS Bot] Market channel not found!'); return; }
   await scanForDeals(marketChannel).catch(console.error);
-  setInterval(() => scanForDeals(marketChannel).catch(console.error), SCAN_INTERVAL_MS);
+  await scanAmetsListForDeals(marketChannel).catch(console.error);
+  setInterval(async () => {
+    await scanForDeals(marketChannel).catch(console.error);
+    await scanAmetsListForDeals(marketChannel).catch(console.error);
+  }, SCAN_INTERVAL_MS);
   console.log(`[TORTUGAS Bot] Market scanning every ${SCAN_INTERVAL_MS / 60000} min.`);
 });
 
