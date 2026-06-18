@@ -881,7 +881,7 @@ const DB_URL          = 'https://revenantelegy.com/api/v1.0';
 const ITEM_PAGE_BASE  = 'https://revenantelegy.com/market/item';
 const DB_ITEM_PAGE_BASE = 'https://revenantelegy.com/database/item';
 const SCAN_INTERVAL_MS  = (parseInt(process.env.SCAN_INTERVAL_MINUTES) || 15) * 60 * 1000;
-const DEAL_THRESHOLD    = 0.10; // 90% off
+const DEAL_THRESHOLD    = 0.03; // 97% off
 
 const MARKET_LEGEND = [
   '`$ws <name or id>` — who sells (accepts options)',
