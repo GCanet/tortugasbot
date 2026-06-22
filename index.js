@@ -149,26 +149,27 @@ function registerBossKill(boss, killTime, killerId, channel) {
 
 function findTimerByName(query) {
   const lower = mvpNormalize(query);
+  let partialMatch = null;
   for (const [key, timer] of activeTimers.entries()) {
-    if (mvpNormalize(timer.boss.bossName) === lower) return { key, timer };
+    const normalName = mvpNormalize(timer.boss.bossName);
+    if (normalName === lower) return { key, timer };
     if (timer.boss.alias && timer.boss.alias.some(a => mvpNormalize(a) === lower)) return { key, timer };
+    if (!partialMatch && normalName.includes(lower)) partialMatch = { key, timer };
   }
-  for (const [key, timer] of activeTimers.entries()) {
-    if (mvpNormalize(timer.boss.bossName).includes(lower)) return { key, timer };
-  }
-  return null;
+  return partialMatch;
 }
 
 async function handleMvpMessage(message) {
   const content = message.content.trim();
+  const lower   = content.toLowerCase();
   const userId  = message.author.id;
 
-  if (content.toLowerCase() === '!current') {
+  if (lower === '!current') {
     const timers = Array.from(activeTimers.values()).sort((a, b) => a.minSpawn - b.minSpawn);
     return message.reply({ embeds: [buildCurrentListEmbed(timers)] });
   }
 
-  if (content.toLowerCase().startsWith('!remove')) {
+  if (lower.startsWith('!remove')) {
     const query = content.slice(7).trim();
     if (!query) return message.reply('❌ Usage: `!remove <boss name>`');
     const found = findTimerByName(query);
@@ -178,7 +179,7 @@ async function handleMvpMessage(message) {
     return message.reply(`✅ Timer for **${found.timer.boss.bossName}** removed. <:tortugas:1511020006350127114>`);
   }
 
-  if (content.toLowerCase().startsWith('!edit')) {
+  if (lower.startsWith('!edit')) {
     const query = content.slice(5).trim();
     if (!query) return message.reply('❌ Usage: `!edit <boss name>`');
     const found = findTimerByName(query);
@@ -209,12 +210,12 @@ async function handleMvpMessage(message) {
   }
 
   // Boss name detection
-  const lower = mvpNormalize(content);
-  let matches = bossLookup.get(lower) || [];
+  const bossLower = mvpNormalize(content);
+  let matches = bossLookup.get(bossLower) || [];
 
   if (matches.length === 0) {
     for (const [key, bosses] of bossLookup.entries()) {
-      if (key.includes(lower) || lower.includes(key)) matches = matches.concat(bosses);
+      if (key.includes(bossLower) || bossLower.includes(key)) matches = matches.concat(bosses);
     }
     const seen = new Set();
     matches = matches.filter((b) => {
@@ -237,6 +238,7 @@ async function handleMvpMessage(message) {
   }
 
   // Disambiguation
+  if (pendingDisambig.size >= 100) pendingDisambig.clear();
   pendingDisambig.set(userId, { matches });
   setTimeout(() => pendingDisambig.delete(userId), 60000);
   const options = matches.map((b, i) => `\`${i + 1}\` — **${b.bossName}** (${b.location || 'unknown map'})`).join('\n');
@@ -267,45 +269,36 @@ function makeDefaultSlots(fillRole = 'FILL SPOT') {
 }
 const reminderTimers = new Map();
 
+// Defined here (before INSTANCE_TEMPLATES) so deepCopySlots(DEFAULT_RAID_SLOTS) calls below don't throw
+function deepCopySlots(slots) { return slots.map((s) => ({ ...s })); }
+
+// ─── Shared raid composition reused by most instances ─────────────────────
+const DEFAULT_RAID_SLOTS = [
+  { role: 'MENTAL',   player: null, userId: null },
+  { role: 'SNIPER 1', player: null, userId: null },
+  { role: 'SNIPER 2', player: null, userId: null },
+  { role: 'DEVO',     player: null, userId: null },
+  { role: 'HW',       player: null, userId: null },
+  { role: 'PROF',     player: null, userId: null },
+  { role: 'CHEM DD',  player: null, userId: null },
+  { role: 'GYPSY',    player: null, userId: null },
+  { role: 'CLOWN',    player: null, userId: null },
+  { role: 'LINKER',   player: null, userId: null },
+  { role: 'HP 1',     player: null, userId: null },
+  { role: 'HP 2',     player: null, userId: null },
+  { role: 'BENCH',    player: null, userId: null },
+  { role: 'BENCH',    player: null, userId: null },
+];
+
 const INSTANCE_TEMPLATES = {
   ifirth: {
     fullName: 'Ifrit',
-    slots: [
-      { role: 'MENTAL',   player: null, userId: null },
-      { role: 'SNIPER 1', player: null, userId: null },
-      { role: 'SNIPER 2', player: null, userId: null },
-      { role: 'DEVO',     player: null, userId: null },
-      { role: 'HW',       player: null, userId: null },
-      { role: 'PROF',     player: null, userId: null },
-      { role: 'CHEM DD',  player: null, userId: null },
-      { role: 'GYPSY',    player: null, userId: null },
-      { role: 'CLOWN',    player: null, userId: null },
-      { role: 'LINKER',   player: null, userId: null },
-      { role: 'HP 1',     player: null, userId: null },
-      { role: 'HP 2',     player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-    ],
+    slots: deepCopySlots(DEFAULT_RAID_SLOTS),
     hasFillSpots: true,
   },
   valk: {
     fullName: 'Valkyrie Randgris',
-    slots: [
-      { role: 'MENTAL',   player: null, userId: null },
-      { role: 'SNIPER 1', player: null, userId: null },
-      { role: 'SNIPER 2', player: null, userId: null },
-      { role: 'DEVO',     player: null, userId: null },
-      { role: 'HW',       player: null, userId: null },
-      { role: 'PROF',     player: null, userId: null },
-      { role: 'CHEM DD',  player: null, userId: null },
-      { role: 'GYPSY',    player: null, userId: null },
-      { role: 'CLOWN',    player: null, userId: null },
-      { role: 'LINKER',   player: null, userId: null },
-      { role: 'HP 1',     player: null, userId: null },
-      { role: 'HP 2',     player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-    ],
+    slots: deepCopySlots(DEFAULT_RAID_SLOTS),
     hasFillSpots: true,
   },
   bio3: {
@@ -330,62 +323,17 @@ const INSTANCE_TEMPLATES = {
   },
   et: {
     fullName: 'Endless Tower',
-    slots: [
-      { role: 'MENTAL',   player: null, userId: null },
-      { role: 'SNIPER 1', player: null, userId: null },
-      { role: 'SNIPER 2', player: null, userId: null },
-      { role: 'DEVO',     player: null, userId: null },
-      { role: 'HW',       player: null, userId: null },
-      { role: 'PROF',     player: null, userId: null },
-      { role: 'CHEM DD',  player: null, userId: null },
-      { role: 'GYPSY',    player: null, userId: null },
-      { role: 'CLOWN',    player: null, userId: null },
-      { role: 'LINKER',   player: null, userId: null },
-      { role: 'HP 1',     player: null, userId: null },
-      { role: 'HP 2',     player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-    ],
+    slots: deepCopySlots(DEFAULT_RAID_SLOTS),
     hasFillSpots: true,
   },
   'sealed shrine': {
     fullName: 'Sealed Shrine',
-    slots: [
-      { role: 'MENTAL',   player: null, userId: null },
-      { role: 'SNIPER 1', player: null, userId: null },
-      { role: 'SNIPER 2', player: null, userId: null },
-      { role: 'DEVO',     player: null, userId: null },
-      { role: 'HW',       player: null, userId: null },
-      { role: 'PROF',     player: null, userId: null },
-      { role: 'CHEM DD',  player: null, userId: null },
-      { role: 'GYPSY',    player: null, userId: null },
-      { role: 'CLOWN',    player: null, userId: null },
-      { role: 'LINKER',   player: null, userId: null },
-      { role: 'HP 1',     player: null, userId: null },
-      { role: 'HP 2',     player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-    ],
+    slots: deepCopySlots(DEFAULT_RAID_SLOTS),
     hasFillSpots: true,
   },
   bee: {
     fullName: 'Beelzebub',
-    slots: [
-      { role: 'MENTAL',   player: null, userId: null },
-      { role: 'SNIPER 1', player: null, userId: null },
-      { role: 'SNIPER 2', player: null, userId: null },
-      { role: 'DEVO',     player: null, userId: null },
-      { role: 'HW',       player: null, userId: null },
-      { role: 'PROF',     player: null, userId: null },
-      { role: 'CHEM DD',  player: null, userId: null },
-      { role: 'GYPSY',    player: null, userId: null },
-      { role: 'CLOWN',    player: null, userId: null },
-      { role: 'LINKER',   player: null, userId: null },
-      { role: 'HP 1',     player: null, userId: null },
-      { role: 'HP 2',     player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-      { role: 'BENCH',    player: null, userId: null },
-    ],
+    slots: deepCopySlots(DEFAULT_RAID_SLOTS),
     hasFillSpots: true,
   },
   captain: {
@@ -447,8 +395,6 @@ const INSTANCE_ALIASES = {
 };
 
 const activeInstances = new Map();
-
-function deepCopySlots(slots) { return slots.map((s) => ({ ...s })); }
 
 function resolveInstanceKey(input) {
   return INSTANCE_ALIASES[input.toLowerCase().trim()] || null;
@@ -596,16 +542,28 @@ function findSlotByRole(slots, roleInput) {
   return -1;
 }
 
+async function fetchForumChannel(message) {
+  let forumChannel;
+  try { forumChannel = await client.channels.fetch(INSTANCES_FORUM_CHANNEL_ID); }
+  catch (e) { await message.reply('❌ Could not find the forum channel.'); return null; }
+  if (forumChannel.type !== ChannelType.GuildForum) {
+    await message.reply('❌ INSTANCES_FORUM_CHANNEL_ID is not a forum channel.');
+    return null;
+  }
+  return forumChannel;
+}
+
 async function handleInstanceCommand(message) {
   const content = message.content.trim();
+  const lower   = content.toLowerCase();
 
-  if (content.toLowerCase() === '!launch') {
+  if (lower === '!launch') {
     return message.reply(
       `🚀 **Revenant Elegy Launch** <:tortugas:1511020006350127114>\n📅 <t:${LAUNCH_TIMESTAMP}:F>\n⏳ <t:${LAUNCH_TIMESTAMP}:R>`
     );
   }
 
-  if (content.toLowerCase() === '!server') {
+  if (lower === '!server') {
     try {
       const health = await fetchServerHealth();
       return message.reply(
@@ -619,7 +577,7 @@ async function handleInstanceCommand(message) {
     }
   }
 
-  if (content.toLowerCase() === '!players') {
+  if (lower === '!players') {
     try {
       const health = await fetchServerHealth();
       return message.reply(
@@ -631,7 +589,7 @@ async function handleInstanceCommand(message) {
     }
   }
 
-  if (content.toLowerCase().startsWith('!instance')) {
+  if (lower.startsWith('!instance')) {
     const args = content.slice('!instance'.length).trim();
     if (!args) {
       return message.reply('❌ Available: `ifirth`, `valk`, `bio3`, `et`, `sealed shrine`, `bee`, `captain`, `open` <:tortugas:1511020006350127114>');
@@ -641,11 +599,8 @@ async function handleInstanceCommand(message) {
 
     if (!instanceKey) {
       // Free-text instance name
-      let forumChannel;
-      try { forumChannel = await client.channels.fetch(INSTANCES_FORUM_CHANNEL_ID); }
-      catch (e) { return message.reply('❌ Could not find the forum channel.'); }
-      if (forumChannel.type !== ChannelType.GuildForum)
-        return message.reply('❌ INSTANCES_FORUM_CHANNEL_ID is not a forum channel.');
+      const forumChannel = await fetchForumChannel(message);
+      if (!forumChannel) return;
 
       const slots       = makeDefaultSlots();
       const defaultHour = getDefaultFridayHour();
@@ -673,11 +628,8 @@ async function handleInstanceCommand(message) {
     }
 
     const tpl = INSTANCE_TEMPLATES[instanceKey];
-    let forumChannel;
-    try { forumChannel = await client.channels.fetch(INSTANCES_FORUM_CHANNEL_ID); }
-    catch (e) { return message.reply('❌ Could not find the forum channel.'); }
-    if (forumChannel.type !== ChannelType.GuildForum)
-      return message.reply('❌ INSTANCES_FORUM_CHANNEL_ID is not a forum channel.');
+    const forumChannel = await fetchForumChannel(message);
+    if (!forumChannel) return;
 
     const slots       = deepCopySlots(tpl.slots);
     const defaultHour = getDefaultFridayHour();
@@ -700,15 +652,12 @@ async function handleInstanceCommand(message) {
     return message.reply(`✅ Instance thread created <:tortugas:1511020006350127114> ${thread.url}`);
   }
 
-  if (content.toLowerCase().startsWith('!party')) {
+  if (lower.startsWith('!party')) {
     const args = content.slice('!party'.length).trim();
     if (!args) return message.reply('❌ Usage: `!party <name>`');
 
-    let forumChannel;
-    try { forumChannel = await client.channels.fetch(INSTANCES_FORUM_CHANNEL_ID); }
-    catch (e) { return message.reply('❌ Could not find the forum channel.'); }
-    if (forumChannel.type !== ChannelType.GuildForum)
-      return message.reply('❌ INSTANCES_FORUM_CHANNEL_ID is not a forum channel.');
+    const forumChannel = await fetchForumChannel(message);
+    if (!forumChannel) return;
 
     const slots       = deepCopySlots(INSTANCE_TEMPLATES.party.slots);
     const defaultHour = getDefaultFridayHour();
@@ -734,6 +683,7 @@ async function handleInstanceCommand(message) {
 
 async function handleThreadMessage(message) {
   const content  = message.content.trim();
+  const lower    = content.toLowerCase();
   const thread   = message.channel;
   const state    = activeInstances.get(thread.id);
   if (!state) return;
@@ -743,7 +693,7 @@ async function handleThreadMessage(message) {
   const userId   = message.author.id;
   const username = message.member?.displayName || message.author.username;
 
-  if (content.toLowerCase() === '!repost') {
+  if (lower === '!repost') {
     const dropdown = buildDropdown(state.instanceKey, state.slots);
     const signout  = buildSignOutButton();
     return thread.send({
@@ -752,7 +702,7 @@ async function handleThreadMessage(message) {
     });
   }
 
-  if (content.toLowerCase() === '$hour help') {
+  if (lower === '$hour help') {
     return message.reply(
       '**How to set the instance time:**\n' +
       'Get a Unix timestamp at https://www.unixtimestamp.com\n' +
@@ -760,7 +710,7 @@ async function handleThreadMessage(message) {
     );
   }
 
-  if (content.toLowerCase().startsWith('$hournew')) {
+  if (lower.startsWith('$hournew')) {
     if (userId !== creatorId) return message.reply('❌ Only the instance creator can change the time.');
     const ts = parseInt(content.split(/\s+/)[1]);
     if (isNaN(ts)) return message.reply('❌ Invalid timestamp.');
@@ -770,7 +720,7 @@ async function handleThreadMessage(message) {
     return message.reply(`✅ Instance time set to <t:${ts}:F> <:tortugas:1511020006350127114>`);
   }
 
-  if (content.toLowerCase() === '$out') {
+  if (lower === '$out') {
     const idx = slots.findIndex(s => s.userId === userId);
     if (idx === -1) return message.reply("❌ You're not signed up.");
     slots[idx].player = null;
@@ -779,7 +729,7 @@ async function handleThreadMessage(message) {
     return message.reply(`✅ ${username} removed from slot ${idx + 1}. <:tortugas:1511020006350127114>`);
   }
 
-  if (content.toLowerCase().startsWith('$clear')) {
+  if (lower.startsWith('$clear')) {
     if (userId !== creatorId) return message.reply('❌ Only the instance creator can clear slots.');
     const num = parseInt(content.split(/\s+/)[1]);
     if (isNaN(num) || num < 1 || num > PARTY_SIZE)
@@ -792,7 +742,7 @@ async function handleThreadMessage(message) {
     return message.reply(`✅ Cleared slot ${num}${was ? ` (was ${was})` : ''}. <:tortugas:1511020006350127114>`);
   }
 
-  if (content.toLowerCase() === '$fill') {
+  if (lower === '$fill') {
     if (!tpl.hasFillSpots) return message.reply('❌ This instance has no fill spots.');
     const fillIdx = slots.findIndex((s, i) => i < ACTIVE_PARTY_SIZE && s.role === 'FILL SPOT' && s.player === null);
     if (fillIdx === -1) return message.reply('❌ All fill spots are taken!');
@@ -809,7 +759,7 @@ async function handleThreadMessage(message) {
     return message.reply(reply);
   }
 
-  if (content.toLowerCase().startsWith('$swap')) {
+  if (lower.startsWith('$swap')) {
     const swapArg   = content.slice(5).trim().replace(/^\$/, '');
     if (!swapArg) return message.reply('❌ Usage: `$swap $job` or `$swap $number`');
     const existingIdx = slots.findIndex(s => s.userId === userId);
@@ -828,7 +778,7 @@ async function handleThreadMessage(message) {
     return message.reply(`✅ Moved to slot ${targetIdx + 1} (**${slots[targetIdx].role}**). <:tortugas:1511020006350127114>`);
   }
 
-  if (content.toLowerCase().startsWith('$rename')) {
+  if (lower.startsWith('$rename')) {
     if (userId !== creatorId) return message.reply('❌ Only the instance creator can rename slots.');
     const parts   = content.split(/\s+/);
     const num     = parseInt(parts[1]);
@@ -952,6 +902,19 @@ async function handleWatchlistShow(message) {
   return message.reply({ embeds: [embed] });
 }
 
+// ─── Shared helper: split embed description blocks under Discord's 4000-char limit ──
+function chunkBlocks(blocks, maxLen = 3800) {
+  const chunks = [];
+  let current  = '';
+  for (const block of blocks) {
+    const candidate = current ? current + '\n\n' + block : block;
+    if (candidate.length > maxLen) { chunks.push(current); current = block; }
+    else current = candidate;
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
 async function scanAmetsListForDeals(channel) {
   const entries = Object.values(watchlist);
   if (entries.length === 0) return;
@@ -962,7 +925,11 @@ async function scanAmetsListForDeals(channel) {
     let listings;
     try { listings = await fetchItemListings(entry.nameid); }
     catch (e) { console.error(`[AMETS LIST] Failed to fetch ${entry.nameid}:`, e.message); continue; }
-    if (!listings || listings.length === 0) continue;
+    if (!listings || listings.length === 0) {
+      // Deal gone — clear stored fingerprint so it re-alerts if it returns
+      delete lastAmetsPost[entry.nameid];
+      continue;
+    }
 
     // Update item name from live data if we have it
     if (listings[0]?.item_name && !entry.item_name.startsWith('Item #')) {
@@ -974,24 +941,32 @@ async function scanAmetsListForDeals(channel) {
       .filter(l => l.price <= entry.minPrice)
       .sort((a, b) => a.price - b.price);
 
-    if (underThreshold.length === 0) continue;
+    if (underThreshold.length === 0) {
+      // No longer under threshold — clear so it re-alerts when it drops again
+      delete lastAmetsPost[entry.nameid];
+      continue;
+    }
 
     const cheapest = underThreshold[0];
+
+    // Build a fingerprint for this cheapest listing.
+    // Use vending_item_id when available (unique per shop slot); fall back to price.
+    const fingerprint = `${cheapest.price}_${cheapest.vending_item_id || cheapest.char_name || ''}`;
+    if (lastAmetsPost[entry.nameid] === fingerprint) {
+      console.log(`[AMETS LIST] Skipping ${item_name} — same listing as last scan.`);
+      continue;
+    }
+    lastAmetsPost[entry.nameid] = fingerprint;
+
     const block = buildListingBlock(cheapest, { nameid: entry.nameid, item_name, isWs: true });
     block.unshift(`🎯 **Threshold:** ${formatPrice(entry.minPrice)} | **Found ${underThreshold.length} listing(s)**`);
     dealBlocks.push({ nameid: entry.nameid, item_name, block: block.join('\n') });
   }
 
-  if (dealBlocks.length === 0) { console.log('[AMETS LIST] No deals found.'); return; }
+  saveAmetsState(lastAmetsPost);
+  if (dealBlocks.length === 0) { console.log('[AMETS LIST] No new deals found.'); return; }
 
-  const chunks = [];
-  let current = '';
-  for (const { block } of dealBlocks) {
-    const candidate = current ? current + '\n\n' + block : block;
-    if (candidate.length > 3800) { chunks.push(current); current = block; }
-    else current = candidate;
-  }
-  if (current) chunks.push(current);
+  const chunks = chunkBlocks(dealBlocks.map(d => d.block));
 
   for (let i = 0; i < chunks.length; i++) {
     const embed = new EmbedBuilder()
@@ -1064,6 +1039,43 @@ let itemIndex       = new Map();
 let itemNameIndex   = new Map();
 let alertedDealsThisCycle = new Set();
 
+// ─── Deal dedup state ──────────────────────────────────────────────────────
+// Keyed by `nameid_minPrice`; value is true. Persisted across scans so the
+// same deal is never reposted until the market actually changes.
+const DEALS_STATE_PATH = path.join(__dirname, 'deals_state.json');
+
+function loadDealsState() {
+  try {
+    if (fs.existsSync(DEALS_STATE_PATH)) return new Set(JSON.parse(fs.readFileSync(DEALS_STATE_PATH, 'utf8')));
+  } catch (e) { console.error('[Deals] Failed to load deals state:', e.message); }
+  return new Set();
+}
+
+function saveDealsState(set) {
+  try { fs.writeFileSync(DEALS_STATE_PATH, JSON.stringify([...set]), 'utf8'); }
+  catch (e) { console.error('[Deals] Failed to save deals state:', e.message); }
+}
+
+// Keys that were already posted. Cleared only when a deal disappears from the market.
+let postedDealKeys = loadDealsState();
+
+// Per-item last-posted fingerprint for AMETS LIST: { [nameid]: "price_amount" }
+const AMETS_STATE_PATH = path.join(__dirname, 'amets_state.json');
+
+function loadAmetsState() {
+  try {
+    if (fs.existsSync(AMETS_STATE_PATH)) return JSON.parse(fs.readFileSync(AMETS_STATE_PATH, 'utf8'));
+  } catch (e) { console.error('[AMETS] Failed to load amets state:', e.message); }
+  return {};
+}
+
+function saveAmetsState(obj) {
+  try { fs.writeFileSync(AMETS_STATE_PATH, JSON.stringify(obj, null, 2), 'utf8'); }
+  catch (e) { console.error('[AMETS] Failed to save amets state:', e.message); }
+}
+
+let lastAmetsPost = loadAmetsState(); // { [nameid]: "price_vendingItemId" }
+
 function mNormalize(str) { return str.toLowerCase().trim(); }
 
 function median(prices) {
@@ -1080,9 +1092,10 @@ function formatPrice(p) {
 }
 
 function formatDropRate(rate) { return `${(rate / 100).toFixed(2)}%`; }
-function itemImageUrl(nameid)  { return `https://static.divine-pride.net/images/items/item/${nameid}.png`; }
-function itemPageUrl(nameid)   { return `${ITEM_PAGE_BASE}/${nameid}`; }
-function dbItemPageUrl(nameid) { return `${DB_ITEM_PAGE_BASE}/${nameid}`; }
+function itemImageUrl(nameid)        { return `https://static.divine-pride.net/images/items/item/${nameid}.png`; }
+function itemPageUrl(vendingItemId)  { return `${ITEM_PAGE_BASE}/${vendingItemId}`; }  // expects vending_item_id, not nameid
+function marketSearchUrl(item_name)  { return `${ITEM_PAGE_BASE.replace(/\/item$/, '')}/?search=${encodeURIComponent(item_name)}`; }
+function dbItemPageUrl(nameid)       { return `${DB_ITEM_PAGE_BASE}/${nameid}`; }
 function mobPageUrl(mobId)     { return `https://revenantelegy.com/database/mob/${mobId}`; }
 
 function parseWsQuery(fullQuery) {
@@ -1125,7 +1138,7 @@ function buildListingBlock(listing, opts = {}) {
   const lines = [];
   const refinePrefix  = listing.refine ? `+${listing.refine} ` : '';
   const displayName   = item_name || listing.item_name || `Item #${nameid}`;
-  const url           = itemPageUrl(nameid || listing.nameid);
+  const url           = listing.vending_item_id ? itemPageUrl(listing.vending_item_id) : marketSearchUrl(item_name || listing.item_name || '');
   lines.push(`${refinePrefix}[${displayName}](${url})`);
   if (Array.isArray(listing.cards) && listing.cards.length > 0)
     lines.push(`🃏 ${listing.cards.map(c => c.name).join(' | ')}`);
@@ -1199,6 +1212,10 @@ async function* fetchAllListingsPages() {
   }
 }
 
+// Max pages to scan at startup for the name cache. Intentionally capped so the
+// bot starts quickly; the cache fills further during deal scans. Override via env.
+const NAME_CACHE_MAX_PAGES = parseInt(process.env.NAME_CACHE_MAX_PAGES) || 10;
+
 async function buildNameCache() {
   console.log('[Market] Building name cache...');
   let count = 0;
@@ -1209,7 +1226,7 @@ async function buildNameCache() {
         nameToId.set(mNormalize(item.item_name), item.nameid);
       }
     }
-    if (++count >= 10) break;
+    if (++count >= NAME_CACHE_MAX_PAGES) break;
   }
   console.log(`[Market] Name cache: ${nameCache.size} items`);
 }
@@ -1295,7 +1312,13 @@ function findMobDrops(query) {
   return results;
 }
 
+// Guard flag — prevents two overlapping scan cycles if the API is slow
+let isScanning = false;
+
 async function scanForDeals(channel) {
+  if (isScanning) { console.log('[Market] Scan already in progress — skipping this cycle.'); return; }
+  isScanning = true;
+  try {
   console.log('[Market] Scanning for deals...');
   alertedDealsThisCycle = new Set();
   const byItem = new Map();
@@ -1309,34 +1332,41 @@ async function scanForDeals(channel) {
       if (!entry.cheapest || item.price < entry.cheapest.price) entry.cheapest = item;
     }
   }
+
+  // Collect every key that qualifies as a deal this scan.
+  // Only post deals whose key hasn't been posted before.
+  // Keys are pruned when the deal disappears so they can re-alert if it returns.
+  const currentDealKeys = new Set();
   const deals = [];
   for (const [nameid, entry] of byItem.entries()) {
     if (entry.prices.length < 2) continue;
     const med = median(entry.prices);
     if (med <= 0) continue;
-    const minPrice = Math.min(...entry.prices);
+    const minPrice = entry.prices.reduce((m, p) => p < m ? p : m, Infinity);
     if (minPrice <= med * DEAL_THRESHOLD) {
       const dealKey = `${nameid}_${minPrice}`;
-      if (!alertedDealsThisCycle.has(dealKey)) {
+      currentDealKeys.add(dealKey);
+      if (!postedDealKeys.has(dealKey)) {
         alertedDealsThisCycle.add(dealKey);
         deals.push({ nameid, item_name: entry.item_name, minPrice, medianPrice: med, cheapest: entry.cheapest });
       }
     }
   }
-  if (deals.length === 0) { console.log('[Market] No deals found.'); return; }
+
+  // Prune keys no longer present in the market so they can fire again later
+  for (const key of postedDealKeys) {
+    if (!currentDealKeys.has(key)) postedDealKeys.delete(key);
+  }
+  for (const key of alertedDealsThisCycle) postedDealKeys.add(key);
+  saveDealsState(postedDealKeys);
+
+  if (deals.length === 0) { console.log('[Market] No new deals found.'); return; }
   deals.sort((a, b) => (a.minPrice / a.medianPrice) - (b.minPrice / b.medianPrice));
   const dealBlocks = deals.map(({ nameid, item_name, minPrice, medianPrice, cheapest }) => {
     const discount = Math.round((1 - minPrice / medianPrice) * 100);
     return buildListingBlock(cheapest, { nameid, item_name, medianPrice, discount, isWs: false }).join('\n');
   });
-  const chunks = [];
-  let current = '';
-  for (const block of dealBlocks) {
-    const candidate = current ? current + '\n\n' + block : block;
-    if (candidate.length > 3800) { chunks.push(current); current = block; }
-    else current = candidate;
-  }
-  if (current) chunks.push(current);
+  const chunks = chunkBlocks(dealBlocks);
   for (let i = 0; i < chunks.length; i++) {
     const embed = new EmbedBuilder()
       .setTitle(i === 0 ? `🔥 Market Deals <:tortugas:1511020006350127114> (${deals.length})` : `🔥 Market Deals <:tortugas:1511020006350127114> (cont.)`)
@@ -1346,6 +1376,11 @@ async function scanForDeals(channel) {
     if (i === chunks.length - 1) embed.addFields({ name: '📋 Commands', value: MARKET_LEGEND });
     await channel.send({ embeds: [embed] });
     await new Promise(r => setTimeout(r, 1500));
+  }
+  } catch (e) {
+    console.error('[Market] scanForDeals error:', e.message);
+  } finally {
+    isScanning = false;
   }
 }
 
@@ -1369,7 +1404,7 @@ async function handleWhoSells(message, fullQuery) {
   const filterText = filters.length > 0 ? ` [${filters.map(f => `${OPTION_MAP[f.id] || f.id} ≥ ${f.value}`).join(' + ')}]` : '';
   const embed = new EmbedBuilder()
     .setTitle(`🛒 ${item_name} (${nameid})${filterText}`)
-    .setURL(itemPageUrl(nameid))
+    .setURL(marketSearchUrl(item_name))
     .setColor(0x2ecc71)
     .setThumbnail(itemImageUrl(nameid))
     .setDescription(sorted.map(l => buildListingBlock(l, { nameid, item_name, isWs: true }).join('\n')).join('\n\n'))
@@ -1385,34 +1420,76 @@ async function handleWhoSells(message, fullQuery) {
 async function handlePriceHistory(message, query) {
   const nameid = resolveItem(query);
   if (!nameid) return message.reply(`❌ Item \`${query}\` not found.`);
-  let history;
+
+  // Fetch history and current listings in parallel
+  let history, listings;
   try {
-    const res = await fetch(`${BASE_URL}/history/?nameid=${nameid}`);
-    history   = await res.json();
-  } catch (e) { return message.reply('❌ Failed to fetch price history.'); }
-  const item_name = nameCache.get(nameid) || itemIndex.get(nameid)?.name || `Item #${nameid}`;
-  const results   = history.results || history;
-  if (!Array.isArray(results) || results.length === 0)
-    return message.reply(`📦 No price history for **[${item_name}](${itemPageUrl(nameid)})**. <:tortugas:1511020006350127114>`);
-  const recent = results.slice(0, 10);
-  const prices = recent.map(r => r.price);
-  const med    = median(prices);
-  const embed  = new EmbedBuilder()
+    [history, listings] = await Promise.all([
+      fetch(`${BASE_URL}/history/?nameid=${nameid}`).then(r => r.json()),
+      fetch(`${BASE_URL}/?nameid=${nameid}`).then(r => r.json()),   // nameid=, not id= (id= is vending_item_id)
+    ]);
+  } catch (e) { return message.reply('❌ Failed to fetch price data.'); }
+
+  const item_name   = nameCache.get(nameid) || itemIndex.get(nameid)?.name || `Item #${nameid}`;
+  const histResults = history.results || history;
+  const mktResults  = (listings.results || listings).filter(l => l.nameid === nameid);
+
+  if ((!Array.isArray(histResults) || histResults.length === 0) && mktResults.length === 0)
+    return message.reply(`📦 No price data for **[${item_name}](${marketSearchUrl(item_name)})**. <:tortugas:1511020006350127114>`);
+
+  const embed = new EmbedBuilder()
     .setTitle(`📈 Price History: ${item_name} (${nameid})`)
-    .setURL(itemPageUrl(nameid))
+    .setURL(marketSearchUrl(item_name))
     .setColor(0x9b59b6)
-    .setThumbnail(itemImageUrl(nameid))
-    .setDescription(recent.map(r => {
-      const date = r.listed_at ? `<t:${Math.floor(new Date(r.listed_at).getTime() / 1000)}:d>` : '?';
+    .setThumbnail(itemImageUrl(nameid));
+
+  // ── Current listings section ──────────────────────────────────────────────
+  if (mktResults.length > 0) {
+    const mktPrices  = mktResults.map(l => l.price);
+    const mktLow     = Math.min(...mktPrices);
+    const mktHigh    = Math.max(...mktPrices);
+    const mktAvg     = median(mktPrices);
+    const mktLines   = mktResults
+      .sort((a, b) => a.price - b.price)
+      .slice(0, 6)
+      .map(l => `**${formatPrice(l.price)}** x${l.amount || 1} — ${l.char_name || '?'}`)
+      .join('\n');
+    embed.addFields(
+      { name: '🛒 Currently Selling', value: mktLines || '—', inline: false },
+      { name: '📉 Market Low',        value: formatPrice(mktLow),  inline: true },
+      { name: '📈 Market High',       value: formatPrice(mktHigh), inline: true },
+      { name: '📊 Market Avg',        value: formatPrice(mktAvg),  inline: true },
+    );
+  } else {
+    embed.addFields({ name: '🛒 Currently Selling', value: '*No active listings*', inline: false });
+  }
+
+  // ── Sales history section ─────────────────────────────────────────────────
+  if (Array.isArray(histResults) && histResults.length > 0) {
+    const recent     = histResults.slice(0, 10);
+    const histPrices = recent.map(r => r.price);
+    const histLow    = Math.min(...histPrices);
+    const histHigh   = Math.max(...histPrices);
+    const histAvg    = median(histPrices);
+    const histLines  = recent.map(r => {
+      const ts = r.time || r.listed_at;
+      const date = ts ? `<t:${Math.floor(new Date(ts).getTime() / 1000)}:d>` : '?';
       return `**${formatPrice(r.price)}** x${r.amount || 1} — ${date}`;
-    }).join('\n'))
-    .addFields(
-      { name: '📊 Median',   value: formatPrice(med),               inline: true },
-      { name: '📉 Lowest',   value: formatPrice(Math.min(...prices)),inline: true },
-      { name: '📈 Highest',  value: formatPrice(Math.max(...prices)),inline: true },
-      { name: '📋 Commands', value: MARKET_LEGEND,                   inline: false }
-    )
-    .setFooter({ text: `Last ${recent.length} sales | 🐢 TORTUGAS` });
+    }).join('\n');
+    embed.addFields(
+      { name: '\u200B', value: '\u200B', inline: false },
+      { name: `📜 Last ${recent.length} Sales`, value: histLines, inline: false },
+      { name: '📉 History Low',  value: formatPrice(histLow),  inline: true },
+      { name: '📈 History High', value: formatPrice(histHigh), inline: true },
+      { name: '📊 History Avg',  value: formatPrice(histAvg),  inline: true },
+    );
+    embed.setFooter({ text: `${histResults.length} total sales on record | 🐢 TORTUGAS` });
+  } else {
+    embed.addFields({ name: '📜 Sales History', value: '*No sales recorded yet*', inline: false });
+    embed.setFooter({ text: '🐢 TORTUGAS' });
+  }
+
+  embed.addFields({ name: '📋 Commands', value: MARKET_LEGEND, inline: false });
   return message.reply({ embeds: [embed] });
 }
 
